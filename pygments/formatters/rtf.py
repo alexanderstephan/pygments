@@ -10,6 +10,7 @@
 
 from pygments.formatter import Formatter
 from pygments.util import get_int_opt, surrogatepair
+from pygments.token import Token
 
 
 __all__ = ['RtfFormatter']
@@ -41,6 +42,14 @@ class RtfFormatter(Formatter):
         Size of the font used. Size is specified in half points. The
         default is 24 half-points, giving a size 12 font.
 
+    `linenos`
+        Turn on line numbering, if set to anything but ``'0'`` 
+        (default: ``'0'``).
+
+    `lineno_fontsize`
+        Font size for line numbers. Size is specified in half points. The
+        default is 18 half-points, giving a 9pt font.
+
         .. versionadded:: 2.0
     """
     name = 'RTF'
@@ -62,6 +71,8 @@ class RtfFormatter(Formatter):
         Formatter.__init__(self, **options)
         self.fontface = options.get('fontface') or ''
         self.fontsize = get_int_opt(options, 'fontsize', 0)
+        self.linenos = options.get('linenos', False)
+        self.lineno_fontsize = get_int_opt(options, 'lineno_fontsize', 18)
 
     def _escape(self, text):
         return text.replace('\\', '\\\\') \
@@ -117,12 +128,52 @@ class RtfFormatter(Formatter):
         if self.fontsize:
             outfile.write('\\fs%d' % self.fontsize)
 
+        ## line numbering setup
+        if self.linenos:
+            
+            # first pass of tokens to obtain total number of lines 
+            num_of_lines = 0
+            tokens = []
+            for ttype, value in tokensource:
+
+                # tokensource is a generator, so make a copy
+                tokens.append((ttype,value))
+                if value == u'\n':
+                    #print("+1 ttype", ttype, "value", repr(value))
+                    num_of_lines += 1
+
+            #print("num_of_lines", num_of_lines)
+            # width of (space) padded line number string
+            linenos_width = len(str(num_of_lines))            
+
+            # line number output book keeping
+            lineno = 1 
+            output_lineno = True
+
+        else:
+            tokens = tokensource
+        
+        
         # highlight stream
-        for ttype, value in tokensource:
+        for ttype, value in tokens:
             while not self.style.styles_token(ttype) and ttype.parent:
                 ttype = ttype.parent
             style = self.style.style_for_token(ttype)
             buf = []
+
+            # line numbers
+            if self.linenos:                                 
+                #print("ttype", ttype, "value", repr(value))
+                if output_lineno:                                      
+                    lineno_str = str(lineno).rjust(linenos_width)      
+                    outfile.write(u'{\\fs%d \\cf1 %s  }'\
+                        % (self.lineno_fontsize, lineno_str))          
+                    output_lineno = False                              
+                                                                       
+                if ttype == Token.Text and value == u'\n':             
+                    output_lineno = True                               
+                    lineno += 1                                        
+
             if style['bgcolor']:
                 buf.append('\\cb%d' % color_mapping[style['bgcolor']])
             if style['color']:
