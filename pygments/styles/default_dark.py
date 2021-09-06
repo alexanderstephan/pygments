@@ -9,11 +9,11 @@
 """
 
 from pygments.style import Style
-from pygments.token import Keyword, Name, Comment, String, Error, \
-     Number, Operator, Generic, Whitespace, Text
+from pygments.token import Keyword, Name, Comment, String, Error, Text, \
+     Number, Operator, Generic, Whitespace, Other, Literal
 
 
-class DefaultStyle(Style):
+class DefaultDarkStyle(Style):
     """
     The default style (inspired by Emacs 22).
     """
